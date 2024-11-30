@@ -7,6 +7,7 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Exception;
 
 class EventController extends Controller
@@ -23,7 +24,16 @@ class EventController extends Controller
             $data = $request->validated();
             
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('events', 'public');
+                $request->validate([
+                    'image' => 'image|mimes:jpeg,png,jpg,gif|max:20480'
+                ]);
+                
+                // Create the events directory if it doesn't exist
+                Storage::disk('public')->makeDirectory('events');
+                
+                // Store the file directly in the public disk under events directory
+                $path = $request->file('image')->store('events', 'public');
+                $data['image'] = $path;
             }
             
             $data['user_id'] = auth()->id();
@@ -58,7 +68,20 @@ class EventController extends Controller
             $data = $request->validated();
             
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('events', 'public');
+                $request->validate([
+                    'image' => 'image|mimes:jpeg,png,jpg,gif|max:20480'
+                ]);
+
+                if ($event->image) {
+                    Storage::delete('public/' . $event->image);
+                }
+                
+                // Create the events directory if it doesn't exist
+                Storage::disk('public')->makeDirectory('events');
+                
+                // Store the file directly in the public disk under events directory
+                $path = $request->file('image')->store('events', 'public');
+                $data['image'] = $path;
             }
             
             $event->update($data);
@@ -79,6 +102,15 @@ class EventController extends Controller
             if (Gate::denies('delete', $event)) {
                 abort(403, 'Unauthorized action.');
             }
+
+            // Optionally handle image when moving to trash
+            // Uncomment if you want to delete image when moving to trash
+            /*
+            if ($event->image) {
+                Storage::disk('public')->delete($event->image);
+                $event->update(['image' => null]);
+            }
+            */
 
             $event->delete();
             
@@ -128,6 +160,11 @@ class EventController extends Controller
             
             if (Gate::denies('forceDelete', $event)) {
                 abort(403, 'Unauthorized action.');
+            }
+
+            // Delete the image file if it exists
+            if ($event->image) {
+                Storage::disk('public')->delete($event->image);
             }
 
             $event->forceDelete();

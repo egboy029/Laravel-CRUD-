@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Event extends Model
 {
@@ -20,6 +21,7 @@ class Event extends Model
         'title',
         'description',
         'event_date',
+        'image',
     ];
 
     /**
@@ -28,8 +30,20 @@ class Event extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'event_date' => 'date',
+        'event_date' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Only delete the image when force deleting
+        static::forceDeleted(function($event) {
+            if ($event->image) {
+                Storage::disk('public')->delete($event->image);
+            }
+        });
+    }
 
     /**
      * Get the user that owns the event.
