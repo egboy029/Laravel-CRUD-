@@ -1,14 +1,14 @@
 <x-app-layout>
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="{ showImage: false, imageSrc: '' }">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">My Events</h2>
-                @include('staff.partials.create-event-modal')
-                @if(auth()->user()->role === 'admin')
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Manage Events</h2>
+                <div class="flex space-x-4">
+                    @include('admin.events.partials.create-event-modal')
                     <a href="{{ route('events.trash') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
                         View Trash
                     </a>
-                @endif
+                </div>
             </div>
 
             @if (session('status'))
@@ -25,7 +25,10 @@
                     <div class="bg-white rounded-lg overflow-hidden shadow-lg transition duration-500 hover:shadow-2xl hover:scale-[1.015]">
                         @if($event->image)
                             <div class="h-48 overflow-hidden cursor-pointer"
-                                 @click="showImage = true; imageSrc = '{{ asset('storage/' . $event->image) }}'">
+                                 @click="$dispatch('show-modal', { 
+                                    url: '{{ asset('storage/' . $event->image) }}',
+                                    alt: '{{ $event->title }}'
+                                 })">
                                 <img src="{{ asset('storage/' . $event->image) }}" 
                                      alt="{{ $event->title }}" 
                                      class="w-full h-full object-cover hover:scale-110 transition-transform duration-300">
@@ -46,14 +49,14 @@
                             </div>
 
                             <div class="flex space-x-2 mt-4">
-                                <a href="{{ route('events.edit', $event) }}" 
+                                <a href="{{ route('admin.events.edit', $event) }}" 
                                    class="p-2 bg-[#ffffff11] hover:bg-[#ffffff22] rounded-md text-black transition"
                                    title="Edit">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </a>
-                                <form method="POST" action="{{ route('events.destroy', $event) }}" 
+                                <form method="POST" action="{{ route('admin.events.destroy', $event) }}" 
                                       onsubmit="return confirm('Are you sure you want to move this event to trash?');" 
                                       class="inline">
                                     @csrf
@@ -71,18 +74,29 @@
                     </div>
                 @endforeach
             </div>
+        </div>
 
-            <!-- Image Modal -->
-            <div x-show="showImage" 
+        <!-- Image Modal -->
+        <div x-data="{ 
+            showModal: false,
+            imageUrl: '',
+            imageAlt: ''
+        }"
+        @show-modal.window="
+            showModal = true;
+            imageUrl = $event.detail.url;
+            imageAlt = $event.detail.alt;
+        ">
+            <div x-show="showModal" 
                  class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
-                 @click="showImage = false"
-                 @keydown.escape.window="showImage = false"
+                 @click="showModal = false"
+                 @keydown.escape.window="showModal = false"
                  style="display: none;">
                 <div class="relative">
-                    <img :src="imageSrc" 
+                    <img :src="imageUrl" 
                          class="max-w-none w-auto h-auto"
                          @click.stop>
-                    <button @click="showImage = false" 
+                    <button @click="showModal = false" 
                             class="absolute top-4 right-4 text-white hover:text-gray-300">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -93,4 +107,3 @@
         </div>
     </div>
 </x-app-layout>
-<script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>

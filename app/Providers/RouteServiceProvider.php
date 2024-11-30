@@ -17,11 +17,11 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function redirectTo(Request $request)
     {
-        if ($request->user() && $request->user()->role === 'staff') {
-            return route('staff.home');
+        if ($request->user() && $request->user()->role === 'admin') {
+            return route('admin.dashboard');
         }
 
-        return route('dashboard');
+        return route('staff.home');
     }
 
     /**
