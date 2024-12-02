@@ -28,11 +28,36 @@ class AdminEventController extends Controller
             ->get();
 
         // Get recent activities
-        $recentActivities = Event::with('user')
-            ->withTrashed()
-            ->latest()
-            ->take(5)
-            ->get();
+        $recentActivities = Event::with(['user' => function($query) {
+            $query->select('id', 'name', 'email', 'role');
+        }])
+        ->withTrashed()
+        ->select('id', 'title', 'description', 'event_date', 'created_at', 'deleted_at', 'user_id')
+        ->latest()
+        ->take(5)
+        ->get()
+        ->map(function($event) {
+            $status = $event->deleted_at 
+                ? 'deleted' 
+                : ($event->event_date > now() 
+                    ? 'upcoming'
+                    : ($event->event_date < now() 
+                        ? 'past' 
+                        : 'active'));
+            
+            return [
+                'id' => $event->id,
+                'title' => $event->title,
+                'event_date' => $event->event_date,
+                'created_at' => $event->created_at,
+                'status' => $status,
+                'user' => [
+                    'name' => $event->user->name,
+                    'email' => $event->user->email,
+                    'role' => $event->user->role
+                ]
+            ];
+        });
 
         // Get monthly event statistics for PostgreSQL
         $monthlyStats = Event::select(
@@ -46,6 +71,15 @@ class AdminEventController extends Controller
         ->take(6)
         ->get();
 
+        // Get upcoming and past events
+        $now = now();
+        $upcomingEvents = Event::whereNull('deleted_at')
+            ->where('event_date', '>', $now)
+            ->count();
+        $pastEvents = Event::whereNull('deleted_at')
+            ->where('event_date', '<', $now)
+            ->count();
+
         return view('admin.dashboard', compact(
             'totalEvents',
             'trashedEvents',
@@ -53,7 +87,9 @@ class AdminEventController extends Controller
             'totalUsers',
             'eventsByUser',
             'recentActivities',
-            'monthlyStats'
+            'monthlyStats',
+            'upcomingEvents',
+            'pastEvents'
         ));
     }
 
